@@ -1,8 +1,6 @@
-import * as BABYLON from '@babylonjs/core';
-import * as GUI from "@babylonjs/gui";
+import * as BABYLON from "@babylonjs/core";
 import { AnimationManager } from "../../utils/AnimationManager";
 import { EnemyTest } from "./EnemyTest";
-
 
 enum HeroState {
   IDLE = "idle",
@@ -20,7 +18,6 @@ const HERO_CONFIG = {
 };
 
 export class HeroController {
-  private enemy: EnemyTest;
   private heroMesh: BABYLON.AbstractMesh | null = null;
   private inputMap: Record<string, boolean> = {};
   private keyPressed: Record<string, boolean> = {};
@@ -32,14 +29,17 @@ export class HeroController {
   private particleSystem: BABYLON.ParticleSystem | null = null;
   private scene: BABYLON.Scene;
   private camera: BABYLON.FreeCamera | null = null;
+  private enemy: EnemyTest;
 
-  constructor(scene: BABYLON.Scene) {
-    this.scene = scene;
-    this.loadHero();
-    // TEMP ENEMY
-    this.enemy = new EnemyTest(scene, new BABYLON.Vector3(0, 1, 5));
+constructor(scene: BABYLON.Scene) {
+  this.scene = scene;
 
-  }
+  // Physics is already initialized in app.ts
+  this.loadHero();
+
+  // Temporary enemy for testing
+  this.enemy = new EnemyTest(this.scene, new BABYLON.Vector3(5, 1, 5));
+}
 
   private async loadHero() {
     try {
@@ -53,6 +53,7 @@ export class HeroController {
       this.heroMesh = result.meshes[0];
       this.heroMesh.position = new BABYLON.Vector3(0, 2, 0);
 
+      // Create physics impostor for hero
       this.heroMesh.physicsImpostor = new BABYLON.PhysicsImpostor(
         this.heroMesh,
         BABYLON.PhysicsImpostor.BoxImpostor,
@@ -60,6 +61,7 @@ export class HeroController {
         this.scene
       );
 
+      // Create ground
       const ground = BABYLON.MeshBuilder.CreateBox("ground", { width: 50, height: 1, depth: 50 }, this.scene);
       ground.position.y = -0.5;
       ground.physicsImpostor = new BABYLON.PhysicsImpostor(
@@ -71,9 +73,11 @@ export class HeroController {
 
       this.animationManager = new AnimationManager(result.animationGroups, this.scene);
       this.transitionToState(HeroState.IDLE);
+
       this.createAttackParticles();
       this.setupCamera();
       this.setupInput();
+
       this.scene.onBeforeRenderObservable.add(() => this.update());
     } catch (error) {
       console.error("Failed to load hero mesh:", error);
@@ -104,12 +108,9 @@ export class HeroController {
           this.keyPressed[key] = true;
           if (this.currentState === HeroState.IDLE || this.currentState === HeroState.RUNNING) {
             if (key === " " && !this.isJumping) {
-              const velocityY = this.heroMesh?.physicsImpostor?.getLinearVelocity()?.y ?? 0;
-              if (Math.abs(velocityY) < 2.0) {
-                this.isJumping = true;
-                this.isActionLocked = true;
-                this.transitionToState(HeroState.JUMPING);
-              }
+              this.isJumping = true;
+              this.isActionLocked = true;
+              this.transitionToState(HeroState.JUMPING);
             } else if (key === "f" && !this.attackCooldown) {
               this.isActionLocked = true;
               this.transitionToState(HeroState.ATTACKING);
@@ -264,3 +265,4 @@ export class HeroController {
     }
   }
 }
+

@@ -4,28 +4,34 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const appDirectory = fs.realpathSync(process.cwd());
 
 module.exports = {
-  entry: path.resolve(appDirectory, "src/app.ts"),
+  mode: "development",
+  entry: "./src/app.ts",
   output: {
-    filename: "js/bundle.js",
-    path: path.resolve(appDirectory, "dist"),
+    filename: "bundle.js",
+    path: path.resolve(__dirname, "dist"),
     clean: true,
     publicPath: "/",
   },
   resolve: {
     extensions: [".tsx", ".ts", ".js"],
+    fallback: {
+      "fs": false,
+      "path": false
+    }
   },
   devServer: {
     host: "0.0.0.0",
     port: 8080,
-    static: [
-      path.resolve(appDirectory, "public"),
-      path.resolve(appDirectory, "dist"),
-    ],
-    hot: true,
+    static: {
+      directory: path.join(__dirname, "public"),
+    },
+    compress: true,
     devMiddleware: {
       publicPath: "/",
       writeToDisk: true,
     },
+    hot: true,
+    historyApiFallback: true
   },
   module: {
     rules: [
@@ -34,6 +40,13 @@ module.exports = {
         use: "ts-loader",
         exclude: /node_modules/,
       },
+      {
+        test: /\.(glb|gltf)$/,
+        type: "asset/resource",
+        generator: {
+          filename: "assets/models/[name][ext]"
+        }
+      }
     ],
   },
   plugins: [
@@ -43,5 +56,4 @@ module.exports = {
       filename: "index.html",
     }),
   ],
-  mode: "development",
 };

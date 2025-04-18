@@ -13,33 +13,32 @@ export class AnimationManager {
     console.log("Available animations:", this.getAvailableAnimations());
   }
 
-  /**
-   * Plays an animation with optional looping and end callback
-   * @param name Animation name
-   * @param loop Whether to loop the animation
-   * @param onEnd Callback to execute when animation ends
-   */
   play(name: string, loop: boolean = true, onEnd?: () => void) {
     const anim = this.animations[name.toLowerCase()];
     if (!anim) {
       console.warn(`Animation "${name}" not found`);
       return;
     }
-    if (this.currentAnimation === anim) return;
 
-    if (this.currentAnimation) {
-      this.crossFade(this.currentAnimation, anim, 0.3);
+    if (this.currentAnimation && this.currentAnimation !== anim) {
+      this.crossFade(this.currentAnimation, anim, 0.3, loop);
     } else {
+      this.stopAll();
       anim.reset();
       anim.loopAnimation = loop;
       anim.play(true);
+      console.log(`Playing animation: ${name}, loop: ${loop}`);
     }
 
     if (onEnd && !loop) {
       const observer = anim.onAnimationGroupEndObservable.addOnce(() => {
         onEnd();
+        anim.stop();
+        anim.reset();
+        if (this.currentAnimation === anim) {
+          this.currentAnimation = null;
+        }
       });
-      // Clean up observer if animation is stopped prematurely
       anim.onAnimationGroupPlayObservable.addOnce(() => {
         anim.onAnimationGroupEndObservable.remove(observer);
       });
@@ -48,19 +47,14 @@ export class AnimationManager {
     this.currentAnimation = anim;
   }
 
-  /**
-   * Cross-fades between two animations
-   * @param from Current animation
-   * @param to Target animation
-   * @param duration Fade duration in seconds
-   */
-  crossFade(from: AnimationGroup, to: AnimationGroup, duration: number) {
+  crossFade(from: AnimationGroup, to: AnimationGroup, duration: number, loop: boolean ){
     to.reset();
-    to.loopAnimation = true;
-    to.play(true);
+    to.loopAnimation = false;
+    to.play(loop);
+    console.log(`Cross-fading from ${from.name} to ${to.name}`);
 
     let progress = 0;
-    const step = 1 / (duration * 60); // Approximate 60 FPS
+    const step = 1 / (duration * 60);
 
     const fadeObservable = this.scene.onBeforeRenderObservable.add(() => {
       progress += step;
@@ -69,23 +63,22 @@ export class AnimationManager {
 
       if (progress >= 1) {
         from.stop();
+        from.reset();
         to.setWeightForAllAnimatables(1);
         this.scene.onBeforeRenderObservable.remove(fadeObservable);
+        this.currentAnimation = to;
       }
     });
   }
 
-  /**
-   * Stops all animations
-   */
   stopAll() {
-    Object.values(this.animations).forEach((anim) => anim.stop());
+    Object.values(this.animations).forEach((anim) => {
+      anim.stop();
+      anim.reset();
+    });
     this.currentAnimation = null;
   }
 
-  /**
-   * Returns available animation names
-   */
   getAvailableAnimations(): string[] {
     return Object.keys(this.animations);
   }

@@ -1,6 +1,9 @@
 import * as BABYLON from "babylonjs";
 
-const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
+const canvas = document.getElementById("renderCanvas");
+if (!(canvas instanceof HTMLCanvasElement)) {
+    throw new Error("Canvas element not found");
+}
 const engine = new BABYLON.Engine(canvas, true);
 
 function createScene(): BABYLON.Scene {
